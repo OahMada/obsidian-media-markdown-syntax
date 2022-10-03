@@ -1,9 +1,12 @@
+/* eslint-disable no-var */
 /* eslint-disable prefer-const */
 import {
-	// App,
+	App,
 	Editor,
 	Plugin,
 	normalizePath,
+	PluginSettingTab,
+	Setting,
 } from "obsidian";
 
 import * as path from "path";
@@ -11,8 +14,22 @@ import * as jetpack from "fs-jetpack";
 import { clipboard } from "electron";
 // import { readFilePaths } from "electron-clipboard-ex";
 
+interface MarkdownMediaSettings {
+	width: string;
+}
+
+var DEFAULT_SETTINGS: Partial<MarkdownMediaSettings> = {
+	width: "300",
+};
+
 export default class MarkdownMedia extends Plugin {
+	settings: MarkdownMediaSettings;
+
 	async onload() {
+		await this.loadSettings();
+
+		this.addSettingTab(new MarkdownMediaSettingTab(this.app, this));
+
 		this.addCommand({
 			id: "insert-media-markdown",
 			name: "Insert media markdown",
@@ -47,7 +64,11 @@ export default class MarkdownMedia extends Plugin {
 					);
 					if (this.isImageURL(value.ext)) {
 						editor.replaceRange(
-							`![${value.name}](${value.base})\n`,
+							`![${value.name}${
+								this.settings.width
+									? `|${this.settings.width}`
+									: ""
+							}](${value.base})\n`,
 							editor.getCursor()
 						);
 					} else {
@@ -119,5 +140,45 @@ export default class MarkdownMedia extends Plugin {
 				/\.(jpeg|jpg|gif|png|tif|tiff|bmp|eps|raw|apng|avif|jfif|pjpeg|pjp|svg|webp)$/
 			) != null
 		);
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+}
+
+export class MarkdownMediaSettingTab extends PluginSettingTab {
+	plugin: MarkdownMedia;
+
+	constructor(app: App, plugin: MarkdownMedia) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		let { containerEl } = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName("Image Width")
+			.setDesc("Default Image Width to Display")
+			.addText((text) =>
+				text
+					.setPlaceholder("300")
+					.setValue(this.plugin.settings.width)
+					.onChange(async (value) => {
+						this.plugin.settings.width = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }
