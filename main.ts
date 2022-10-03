@@ -80,6 +80,15 @@ export default class MarkdownMedia extends Plugin {
 				}
 			},
 		});
+
+		this.addCommand({
+			id: "copy-file-parent-path",
+			name: "Copy file parent path",
+			callback: () => {
+				let path = this.destinationPath();
+				clipboard.write({ text: path });
+			},
+		});
 	}
 
 	destinationPath() {
