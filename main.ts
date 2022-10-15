@@ -16,10 +16,14 @@ import { clipboard } from "electron";
 
 interface MarkdownMediaSettings {
 	width: string;
+	prefix: string;
+	suffix: string;
 }
 
 var DEFAULT_SETTINGS: Partial<MarkdownMediaSettings> = {
 	width: "300",
+	prefix: "",
+	suffix: "",
 };
 
 export default class MarkdownMedia extends Plugin {
@@ -47,6 +51,13 @@ export default class MarkdownMedia extends Plugin {
 					);
 				}
 				// copy file, and insert markdown syntax at cursor position
+				let width = this.settings.width
+					? `|${this.settings.width}`
+					: "";
+				let prefix = this.settings.prefix;
+				let suffix = this.settings.suffix;
+				let markdownString = "";
+
 				for (let [key, value] of sourceFileDataMap) {
 					jetpack.copy(
 						key,
@@ -62,22 +73,18 @@ export default class MarkdownMedia extends Plugin {
 							},
 						}
 					);
+
 					if (this.isImageURL(value.ext)) {
-						editor.replaceRange(
-							`![${value.name}${
-								this.settings.width
-									? `|${this.settings.width}`
-									: ""
-							}](${value.base})\n`,
-							editor.getCursor()
-						);
+						markdownString += `\t![${value.name}${width}](${value.base})\n`;
 					} else {
-						editor.replaceRange(
-							`[${value.name}](${value.base})\n`,
-							editor.getCursor()
-						);
+						markdownString += `\t[${value.name}](${value.base})\n`;
 					}
 				}
+
+				editor.replaceRange(
+					`${prefix}\n${markdownString}${suffix}`,
+					editor.getCursor()
+				);
 			},
 		});
 
@@ -186,6 +193,30 @@ export class MarkdownMediaSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.width)
 					.onChange(async (value) => {
 						this.plugin.settings.width = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Prefix")
+			.setDesc("Text prefixes the generated markdown")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.prefix)
+					.onChange(async (value) => {
+						this.plugin.settings.prefix = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Suffix")
+			.setDesc("Text suffixes the generated markdown")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.suffix)
+					.onChange(async (value) => {
+						this.plugin.settings.suffix = value;
 						await this.plugin.saveSettings();
 					})
 			);
